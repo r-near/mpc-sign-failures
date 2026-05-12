@@ -17,6 +17,19 @@ Flags:
 - `--limit N` — max number of failed candidate txs to list (default 400)
 - `--resolve-cap N` — max number of candidates to fetch full detail for (default 400)
 - `--before-block H` — exclusive upper bound on tx block height. Set this a few hours behind the chain head; otherwise a chunk of results will be still-pending yielded promises rather than real failures.
+- `--api-key KEY` — optional FastNEAR API key (or set `FASTNEAR_API_KEY`). Public access works but is rate-limited; you'll hit 429s past ~250 hashes through `/v0/transactions`. Get a key at [dashboard.fastnear.com](https://dashboard.fastnear.com).
+
+## Speed
+
+End-to-end throughput is roughly linear and bottlenecked by `/v0/transactions` (resolve step ~50–60 tx/s; listing is ~300 tx/s).
+
+| `--limit` | wall time | end-to-end rate |
+| ---: | ---: | ---: |
+|   400 |  6.9s | ~58 tx/s |
+|  1000 | 16.7s | ~60 tx/s |
+|  2000 | 35.2s | ~57 tx/s |
+
+Numbers above are with an API key. Without one, the public tier 429s during resolve.
 
 ## How it works
 

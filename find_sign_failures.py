@@ -6,6 +6,7 @@
 
 import argparse
 import json
+import os
 import sys
 from collections import Counter
 
@@ -14,6 +15,7 @@ from tqdm import tqdm
 
 API = "https://tx.main.fastnear.com"
 ACCOUNT = "v1.signer"
+SESSION = requests.Session()
 
 
 def list_failed(limit_total: int, before_block: int | None) -> list[dict]:
@@ -34,7 +36,7 @@ def list_failed(limit_total: int, before_block: int | None) -> list[dict]:
     while len(rows) < limit_total:
         if resume:
             body["resume_token"] = resume
-        r = requests.post(f"{API}/v0/account", json=body, timeout=30)
+        r = SESSION.post(f"{API}/v0/account", json=body, timeout=30)
         r.raise_for_status()
         data = r.json()
         batch = data.get("account_txs", [])
@@ -55,7 +57,7 @@ def resolve(hashes: list[str]) -> list[dict]:
     bar = tqdm(total=len(hashes), desc="resolving tx detail", unit="tx")
     for i in range(0, len(hashes), 20):
         chunk = hashes[i : i + 20]
-        r = requests.post(f"{API}/v0/transactions", json={"tx_hashes": chunk}, timeout=60)
+        r = SESSION.post(f"{API}/v0/transactions", json={"tx_hashes": chunk}, timeout=60)
         r.raise_for_status()
         out.extend(r.json().get("transactions", []))
         bar.update(len(chunk))
@@ -127,7 +129,15 @@ def main() -> None:
         help="exclusive upper bound block height (use to skip recent pending)",
     )
     p.add_argument("--resolve-cap", type=int, default=400, help="max hashes to resolve")
+    p.add_argument(
+        "--api-key",
+        default=os.environ.get("FASTNEAR_API_KEY"),
+        help="FastNEAR API key (or set FASTNEAR_API_KEY). Optional — public tier works but is rate-limited.",
+    )
     args = p.parse_args()
+
+    if args.api_key:
+        SESSION.headers["Authorization"] = f"Bearer {args.api_key}"
 
     print(f"step 1: list up to {args.limit} failed function-call txs touching {ACCOUNT}")
     rows = list_failed(args.limit, args.before_block)
